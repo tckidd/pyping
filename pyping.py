@@ -153,6 +153,7 @@ def verbose_ping(dest_addr, timeout = 2, count = 4, sleep = 1):
     """
     success_count = 0
     total_delay= 0
+    average_delay = 0
     for i in xrange(count):
         localtime = time.asctime(time.localtime(time.time()))
         print "%s ping %s..." % (localtime,dest_addr),
@@ -178,7 +179,16 @@ def verbose_ping(dest_addr, timeout = 2, count = 4, sleep = 1):
         average_delay = total_delay/success_count
         print "average delay %0.4fms" % average_delay
 
-    return success_count, count, round(average_delay,2)
+        return success_count, count, round(average_delay,2)
+
+
+def ipip(des_ip):
+    url = 'http://freeapi.ipip.net/' + des_ip
+    http = httplib2.Http()
+    response, content = http.request(url, 'GET')
+    if content!= "":
+        result = unicode(content[1:-1]).replace('"','').split(',')
+        print "国家：%s \n省份：%s \n城市：%s \n公司/学校：%s \n运营商：%s" % (result[0], result[1], result[2], result[3], result[4] )
 
 
 if __name__ == '__main__':
@@ -192,10 +202,7 @@ if __name__ == '__main__':
     if (arguments['<host>'] != None):
         des_ip = socket.gethostbyname(sys.argv[1])
         if arguments['--ip']:
-            url = 'http://freeapi.ipip.net/' + des_ip
-            http = httplib2.Http()
-            response, content = http.request(url, 'GET')
-            print content
+            ipip(des_ip)
         verbose_ping(des_ip, timeout, count, sleep)
 
     elif (filename!= ""):
@@ -211,10 +218,7 @@ if __name__ == '__main__':
                     if (des_host != ""):
                         des_ip = socket.gethostbyname(des_host)
                         if arguments['--ip']:
-                            url = 'http://freeapi.ipip.net/' + des_ip
-                            http = httplib2.Http()
-                            response, content = http.request(url, 'GET')
-                            print content
+                            ipip(des_ip)
                         ping_result = verbose_ping(des_ip, timeout, count, sleep)
                         data = (des_host, des_ip) + ping_result
                         # return 多个值返回结果为tuple，可通过 + 直接进行运算
