@@ -2,15 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """Usage:
-  pyping.py ( <host> | -f <FILENAME>) [--ip] [-s <seconds>][-n <count>] [-o <timeout>]
+  pyping.py ( <host> | -f <FILENAME>) [--ip] [-s <seconds>][-n <count>| -t] [-o <timeout>]
   pyping.py -h | --help | --version
 
 Options:
     -n <count>  ping测的次数，默认为4次 [default: 4]
+    -t  连续ping直到强制停止
     -s <seconds>    设置每次ping测之间的间隔时间,默认为1秒 [default: 1]
     -o <timeout>    设置响应超时时间，默认为2秒[default: 2]
     -f <FILENAME>       输入文件名读取文件中的host列表
-    --ip    调用ipip.net的借口查询IP地址所在城市
+    --ip    调用ipip.net的接口查询IP地址所在城市
 """
 import sys
 reload(sys)
@@ -154,25 +155,63 @@ def verbose_ping(dest_addr, timeout = 2, count = 4, sleep = 1):
     success_count = 0
     total_delay= 0
     average_delay = 0
-    for i in xrange(count):
-        localtime = time.asctime(time.localtime(time.time()))
-        print "%s ping %s..." % (localtime,dest_addr),
-        try:
-            delay  =  do_one(dest_addr, i+1, timeout)
-        except socket.gaierror, e:
-            print "failed. (socket error: '%s')" % e[1]
-            break
+    if count > 0:
+        for i in xrange(count):
+            localtime = time.asctime(time.localtime(time.time()))
+            print "%s ping %s..." % (localtime,dest_addr),
+            try:
+                delay  =  do_one(dest_addr, i+1, timeout)
+            except socket.gaierror, e:
+                print "failed. (socket error: '%s')" % e[1]
+                break
 
-        if delay  ==  None:
-            print "failed. (timeout within %ssec.)" % timeout
-        else:
-            timetosleep= sleep - delay
-            delay  =  delay * 1000
-            print "get echo reply in %0.4fms" % delay
-            time.sleep(timetosleep)
+            if delay  ==  None:
+                print "failed. (timeout within %ssec.)" % timeout
+            else:
+                if (sleep > delay):
+                    timetosleep = sleep - delay
+                else:
+                    timetosleep = 0
+                delay  =  delay * 1000
+                print "get echo reply in %0.4fms" % delay
+                time.sleep(timetosleep)
 
-            success_count = success_count + 1
-            total_delay = total_delay + delay
+                success_count = success_count + 1
+                total_delay = total_delay + delay
+    else:
+        i = 0
+        count = 0
+        while True:
+            try:
+                localtime = time.asctime(time.localtime(time.time()))
+                print "%s ping %s..." % (localtime,dest_addr),
+                try:
+                    delay  =  do_one(dest_addr, i+1, timeout)
+                except socket.gaierror, e:
+                    print "failed. (socket error: '%s')" % e[1]
+                    break
+
+                count += 1
+
+                if delay  ==  None:
+                    print "failed. (timeout within %ssec.)" % timeout
+                else:
+                    if (sleep > delay):
+                        timetosleep = sleep - delay
+                    else:
+                        timetosleep = 0
+                    delay  =  delay * 1000
+                    print "get echo reply in %0.4fms" % delay
+
+                    success_count = success_count + 1
+                    total_delay = total_delay + delay
+
+                    time.sleep(timetosleep)
+            except KeyboardInterrupt:
+                print "test stop!"
+
+                break
+
     print "success %s/%s, " % (success_count, count),
 
     if total_delay >0 :
@@ -195,12 +234,15 @@ if __name__ == '__main__':
     arguments = docopt(__doc__)
     print(arguments)
     count = int(arguments['-n'])
-    sleep = int(arguments['-s'])
+    sleep = float(arguments['-s'])
     timeout = int(arguments['-o'])
     filename = arguments['-f']
 
+    if (arguments['-t'] == True ):
+        count = -1
+
     if (arguments['<host>'] != None):
-        des_ip = socket.gethostbyname(sys.argv[1])
+        des_ip = socket.gethostbyname(arguments['<host>'])
         if arguments['--ip']:
             ipip(des_ip)
         verbose_ping(des_ip, timeout, count, sleep)
